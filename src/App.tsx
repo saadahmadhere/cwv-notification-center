@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-	const [count, setCount] = useState(0);
-
 	const [list, setList] = useState([]);
 
 	function openDB() {
@@ -45,28 +43,13 @@ function App() {
 		}
 	}
 
-	async function saveNotifications(notif) {
-		try {
-			const db = await openDB();
-			const rwTrans = db.transaction('notifications', 'readwrite');
-			const store = rwTrans.objectStore('notifications');
-			const data = store.put(notif);
-
-			return new Promise((res, rej) => {
-				data.onsuccess = (e) => res(e.target.result);
-				data.onerror = (e) => rej(e.target.result);
-			});
-		} catch (error) {}
-	}
-
 	useEffect(() => {
+		const channel = new BroadcastChannel('notifs-channel');
+		channel.onmessage = async () => {
+			const notifications = await getAllNotifications();
+			setList(notifications);
+		};
 		(async () => {
-			// await saveNotifications({
-			// 	id: crypto.randomUUID(),
-			// 	name: 'test notf 1',
-			// 	isRead: false,
-			// 	timestamp: Date.now(),
-			// });
 			try {
 				if ('serviceWorker' in navigator) {
 					navigator.serviceWorker.register('/sw.js');

@@ -39,7 +39,7 @@ self.addEventListener('install', () => {
 	self.skipWaiting();
 });
 
-self.addEventListener('activate', () => {
+self.addEventListener('activate', (event) => {
 	console.log('[SW] activated');
 	event.waitUntil(self.clients.claim());
 });
@@ -48,5 +48,12 @@ self.addEventListener('push', async (event) => {
 	const data = event.data.json();
 	console.log('[SW] push received sd', data);
 
-	event.waitUntil(saveNotifications(data));
+	event.waitUntil(
+		saveNotifications(data).then(() => {
+			const channel = new BroadcastChannel('notifs-channel');
+			channel.postMessage({ type: 'NEW_NOTIFICATION', data: data });
+
+			channel.close();
+		}),
+	);
 });
