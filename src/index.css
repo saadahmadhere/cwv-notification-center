@@ -1,0 +1,8 @@
+.list-item {
+	margin-bottom: 8px;
+	cursor: pointer;
+}
+
+.list-item.read {
+	color: gray;
+}

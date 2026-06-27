@@ -3,6 +3,7 @@ import './App.css';
 
 function App() {
 	const [list, setList] = useState([]);
+	const [isOnline, setIsOnline] = useState(navigator.onLine);
 
 	function openDB() {
 		const request = indexedDB.open('notifsDB', 1);
@@ -43,7 +44,28 @@ function App() {
 		}
 	}
 
+	async function updateNotifications(notif) {
+		try {
+			const db = await openDB();
+			const rwTrans = db.transaction('notifications', 'readwrite');
+			const store = rwTrans.objectStore('notifications');
+			const data = store.put(notif);
+
+			return new Promise((res, rej) => {
+				data.onsuccess = (e) => res(e.target.result);
+				data.onerror = (e) => rej(e.target.result);
+			});
+		} catch (error) {
+			console.log('saving notification failed, ', error);
+		}
+	}
+
 	useEffect(() => {
+		const handleIsOnline = () => setIsOnline(true);
+		const handleIsOffline = () => setIsOnline(false);
+
+		window.addEventListener('online', handleIsOnline);
+		window.addEventListener('offline', handleIsOffline);
 		const channel = new BroadcastChannel('notifs-channel');
 		channel.onmessage = async () => {
 			const notifications = await getAllNotifications();
@@ -60,17 +82,31 @@ function App() {
 				console.log('error from useEffect', error);
 			}
 		})();
+
+		return () => {
+			window.removeEventListener('online', handleIsOnline);
+			window.removeEventListener('offline', handleIsOffline);
+			channel.close();
+		};
 	}, []);
 
-	function handleNotificationClick(id) {
-		setList((prev) =>
-			prev.map((not) => (not.id === id ? { ...not, isRead: true } : not)),
-		);
+	async function handleNotificationClick(id) {
+		const notif = list.find((li) => li.id === id);
+		const newNotif = { ...notif, isRead: true };
+
+		await updateNotifications(newNotif);
+
+		setList((prev) => {
+			return prev.map((not) =>
+				not.id === id ? { ...not, isRead: true } : not,
+			);
+		});
 	}
 
 	return (
 		<div className='App'>
 			<h3>Notifications</h3>
+			{!isOnline ? <h4>you're offline</h4> : <h4>you're online</h4>}
 			{list.map((not) => {
 				return (
 					<div
